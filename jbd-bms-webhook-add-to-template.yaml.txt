@@ -1,0 +1,176 @@
+#  ------------------------  для харківське шосе ЕСП8266 МОНІТОРІНГ   -------------------------------------
+- trigger:
+    - platform: webhook
+      webhook_id: "v_monitor1"
+      local_only: false
+      allowed_methods:
+        - POST
+        - PUT
+
+  # =========================================================
+  # 1. БІНАРНІ СЕНСОРИ (ON/OFF)
+  # =========================================================
+  binary_sensor:
+
+    - name: "BMS Balancing"
+      unique_id: "bms_balancing"
+      state: >
+        {% set d = trigger.data %}
+        {% if d.key == 'YOR_SECRET_KEY' and d.bal is defined %}
+          {{ d.bal == 'ON' }}
+        {% else %}
+          {{ this.state }}
+        {% endif %}
+        
+    - name: "BMS Charging State"
+      unique_id: "bms_charging_state"
+      state: >
+        {% set d = trigger.data %}
+        {% if d.key == 'YOR_SECRET_KEY' and d.chg is defined %}
+          {{ d.chg == 'ON' }}
+        {% else %}
+          {{ this.state }}
+        {% endif %}
+
+    - name: "BMS Discharging State"
+      unique_id: "bms_discharging_state"
+      state: >
+        {% set d = trigger.data %}
+        {% if d.key == 'YOR_SECRET_KEY' and d.dsg is defined %}
+          {{ d.dsg == 'ON' }}
+        {% else %}
+          {{ this.state }}
+        {% endif %}
+
+    - name: "BMS Connection Status"
+      unique_id: "bms_connection_status"
+      device_class: connectivity
+      state: >
+        {% set d = trigger.data %}
+        {% if d.key == 'YOR_SECRET_KEY' and d.online is defined %}
+          {{ d.online == 'ON' }}
+        {% else %}
+          {{ this.state }}
+        {% endif %}
+
+
+  # =========================================================
+  # 2. ЧИСЛОВІ СЕНСОРИ
+  # =========================================================
+  sensor:
+    # Логіка: нова плата шле змінні "v", "c", "soc" і т.д.
+    
+    # Основні показники
+    - name: "bms Battery Voltage"
+      unique_id: "bms_voltage"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      state: >
+        {% set d = trigger.data %}
+        {% if d.key == 'YOR_SECRET_KEY' and d.v is defined %} {{ d.v }} {% else %} {{ this.state }} {% endif %}
+
+    - name: "bms Battery Current"
+      unique_id: "bms_current"
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+      state: >
+        {% set d = trigger.data %}
+        {% if d.key == 'YOR_SECRET_KEY' and d.c is defined %} {{ d.c }} {% else %} {{ this.state }} {% endif %}
+
+    - name: "bms Battery SOC"
+      unique_id: "bms_soc"
+      unit_of_measurement: "%"
+      device_class: battery
+      state_class: measurement
+      state: >
+        {% set d = trigger.data %}
+        {% if d.key == 'YOR_SECRET_KEY' and d.soc is defined %} {{ d.soc }} {% else %} {{ this.state }} {% endif %}
+
+    # Потужність
+    - name: "bms Charging Power"
+      unique_id: "bms_charging_power"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      state: >
+        {% set d = trigger.data %}
+        {% if d.key == 'YOR_SECRET_KEY' and d.pchg is defined %} {{ d.pchg }} {% else %} {{ this.state }} {% endif %}
+
+    - name: "bms Discharging Power"
+      unique_id: "bms_discharging_power"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      state: >
+        {% set d = trigger.data %}
+        {% if d.key == 'YOR_SECRET_KEY' and d.pdsg is defined %} {{ d.pdsg }} {% else %} {{ this.state }} {% endif %}
+
+    # Комірки (Cell 1 - Cell 4)
+    - name: "bms Cell 1"
+      unique_id: "bms_cell_1"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state: >
+        {% set d = trigger.data %}
+        {% if d.key == 'YOR_SECRET_KEY' and d.c1 is defined %} {{ d.c1 }} {% else %} {{ this.state }} {% endif %}
+
+    - name: "bms Cell 2"
+      unique_id: "bms_cell_2"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state: >
+        {% set d = trigger.data %}
+        {% if d.key == 'YOR_SECRET_KEY' and d.c2 is defined %} {{ d.c2 }} {% else %} {{ this.state }} {% endif %}
+
+    - name: "bms Cell 3"
+      unique_id: "bms_cell_3"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state: >
+        {% set d = trigger.data %}
+        {% if d.key == 'YOR_SECRET_KEY' and d.c3 is defined %} {{ d.c3 }} {% else %} {{ this.state }} {% endif %}
+
+    - name: "bms Cell 4"
+      unique_id: "bms_cell_4"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state: >
+        {% set d = trigger.data %}
+        {% if d.key == 'YOR_SECRET_KEY' and d.c4 is defined %} {{ d.c4 }} {% else %} {{ this.state }} {% endif %}
+
+    # Температури BMS
+    - name: "BMS Temp"
+      unique_id: "bms_temp"
+      unit_of_measurement: "°C"
+      device_class: temperature
+      state: >
+        {% set d = trigger.data %}
+        {% if d.key == 'YOR_SECRET_KEY' and d.t1 is defined %} {{ d.t1 }} {% else %} {{ this.state }} {% endif %}
+
+    - name: "bms MOS Temp"
+      unique_id: "bms_mos_temp"
+      unit_of_measurement: "°C"
+      device_class: temperature
+      state: >
+        {% set d = trigger.data %}
+        {% if d.key == 'YOR_SECRET_KEY' and d.tm is defined %} {{ d.tm }} {% else %} {{ this.state }} {% endif %}
+
+    # IP Адреси (від нової плати)
+    - name: "Public IP"
+      unique_id: "public_ip"
+      icon: mdi:ip-network
+      state: >
+        {% set d = trigger.data %}
+        {% if d.key == 'YOR_SECRET_KEY' and d.ip_public is defined %} {{ d.ip_public }} {% else %} {{ this.state }} {% endif %}
+    
+    - name: "bms Local IP"
+      unique_id: "bms_local_ip"
+      icon: mdi:lan
+      state: >
+        {% set d = trigger.data %}
+        {% if d.key == 'YOR_SECRET_KEY' and d.ip_local is defined %} {{ d.ip_local }} {% else %} {{ this.state }} {% endif %}
+
+
+
