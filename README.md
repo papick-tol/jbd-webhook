@@ -20,7 +20,7 @@ Standard ESPHome integration uses a native API that requires a direct connection
 * 🌍 **Network Info:** Reports Local IP and Public IP (useful for tracking ISP changes).
 * 🚀 **Stability:** Solves common ESP32 BLE + WiFi coexistence issues (reboots) by disabling WiFi power saving.
 
-![Home Assistant Dashboard](jbd-bms-webhook.jpg)
+![Home Assistant Dashboard](jbd-bms-webhook.JPG)
 
 
 ### Hardware Required
@@ -74,7 +74,7 @@ Missing MOS Temp: Many standard JBD BMS units do not have a second temperature s
 
     🚀 Стабільність: Вирішено проблему конфлікту BLE + WiFi (перезавантаження) шляхом вимкнення енергозбереження WiFi.
 
-![Home Assistant Dashboard](jbd-bms-webhook.jpg)
+![Home Assistant Dashboard](jbd-bms-webhook.JPG)
 
 Необхідне залізо
 
