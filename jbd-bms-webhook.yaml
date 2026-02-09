@@ -11,10 +11,10 @@ substitutions:
   
   # === ВАША АДРЕСА HOME ASSISTANT ===
   # Тепер використовуємо ваш домен
-  webhook_target: "https://xxxxxxxxx/api/webhook/v_hsh_monitor1"
+  webhook_target: "https://your-ha-instance/api/webhook/YOUR_WEBHOOK_ID"
   
   # === ВАШ КЛЮЧ ===
-  # (Перевірте, чи це повний ключ, чи ви скоротили його "ххх")
+
   webhook_key: "YOR_SECRET_KEY"
 
 esphome:
