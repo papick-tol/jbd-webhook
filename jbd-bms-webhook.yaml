@@ -1,0 +1,262 @@
+substitutions:
+  dev_name: "hsh-jbd-bms"
+  friendly_name: "hsh BMS"
+  
+  # === НАЛАШТУВАННЯ WI-FI ===
+  wifi_ssid: "xxxxxx"
+  wifi_password: "xxxxxx"
+  
+  # === MAC АДРЕСА BMS  ===
+  bms_mac: "xx:xx:xx:xx:xx:xx"
+  
+  # === ВАША АДРЕСА HOME ASSISTANT ===
+  # Тепер використовуємо ваш домен
+  webhook_target: "https://xxxxxxxxx/api/webhook/v_hsh_monitor1"
+  
+  # === ВАШ КЛЮЧ ===
+  # (Перевірте, чи це повний ключ, чи ви скоротили його "ххх")
+  webhook_key: "YOR_SECRET_KEY"
+
+esphome:
+  name: ${dev_name}
+  friendly_name: ${friendly_name}
+  on_boot:
+    # Просто запускаємо логіку IP через 2 хвилини
+
+    - priority: -10
+      then:
+        - delay: 2min
+        - script.execute: update_ip_logic
+
+    # 2. Пріоритет -10 (Низький/Стандартний) — Виконується пізніше
+    # Тут чекаємо 2 хв і оновлюємо IP
+    - priority: -10
+      then:
+        - delay: 2min
+        - script.execute: update_ip_logic
+esp32:
+  board: wemos_d1_mini32
+  framework:
+    type: arduino  
+
+# Завантажуємо бібліотеку
+external_components:
+  - source: github://syssi/esphome-jbd-bms@main
+    refresh: 0s
+
+wifi:
+  ssid: ${wifi_ssid}
+  password: ${wifi_password}
+  power_save_mode: none
+
+# Веб-сервер та логи
+web_server:
+  port: 80
+logger:
+
+script:
+  - id: update_ip_logic
+    then:
+      - http_request.get:
+          url: https://api.ipify.org
+          capture_response: true
+          on_response:
+            then:
+              - lambda: |-
+                  if (response->status_code == 200) {
+                    id(ip_public).publish_state(body);
+                  }
+
+
+# === BLUETOOTH НАЛАШТУВАННЯ ===
+esp32_ble_tracker:
+  scan_parameters:
+    active: false
+
+ble_client:
+  - id: client0
+    mac_address: ${bms_mac}
+
+# === ГОЛОВНИЙ КОМПОНЕНТ ===
+jbd_bms_ble:
+  - id: bms0
+    ble_client_id: client0
+    update_interval: 10s
+
+# === СЕНСОРИ IP ===
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "Local IP"
+      id: ip_local
+  - platform: template
+    name: "Public IP"
+    id: ip_public
+    icon: "mdi:web"
+  # Статусні сенсори BMS
+  - platform: jbd_bms_ble
+    jbd_bms_ble_id: bms0
+    errors:
+      name: "Errors"
+    operation_status:
+      name: "Operation Status"
+
+# === ЧИСЛОВІ СЕНСОРИ (Додано ID для вебхука) ===
+sensor:
+  - platform: jbd_bms_ble
+    jbd_bms_ble_id: bms0
+    
+    # Загальна напруга
+    total_voltage:
+      name: "Total Voltage"
+      id: bms_volt
+    
+    # Струм
+    current:
+      name: "Current"
+      id: bms_curr
+    
+    # Заряд у % (SOC)
+    state_of_charge:
+      name: "State of Charge"
+      id: bms_soc
+      
+    # Комірки (1-4)
+    cell_voltage_1:
+       name: "Cell 1"
+       id: c1
+    cell_voltage_2:
+       name: "Cell 2"
+       id: c2
+    cell_voltage_3:
+       name: "Cell 3"
+       id: c3
+    cell_voltage_4:
+       name: "Cell 4"
+       id: c4
+       
+    # Температури
+    temperature_1:
+       name: "Temp Probe"
+       id: t1
+    temperature_2:
+       name: "Temp MOS"
+       id: tmos
+    
+    # === СЕНСОРИ ПОТУЖНОСТІ ===
+    charging_power:
+      name: "Charging Power"
+      id: p_chg
+    discharging_power:
+      name: "Discharging Power"
+      id: p_dsg
+
+# === ПЕРЕМИКАЧІ (Bluetooth) ===
+switch:
+  - platform: ble_client
+    ble_client_id: client0
+    name: "Enable Bluetooth Connection"
+    id: ble_client_switch0
+
+  - platform: jbd_bms_ble
+    jbd_bms_ble_id: bms0
+    charging:
+      name: "Charging Switch"
+      id: mos_chg
+    discharging:
+      name: "Discharging Switch"
+      id: mos_dsg
+
+# === СТАТУСИ ===
+binary_sensor:
+  - platform: jbd_bms_ble
+    jbd_bms_ble_id: bms0
+    balancing:
+      name: "Balancing"
+      id: is_balancing
+    charging:
+      name: "Charging State"
+      id: is_charging
+    discharging:
+      name: "Discharging State"
+      id: is_discharging
+    # === ОНЛАЙН СТАТУС ===
+    online_status:
+      name: "BMS Online"
+      id: bms_online
+
+# === WEBHOOK (HTTP REQUEST) ===
+http_request:
+  useragent: esphome/hub
+  timeout: 10s
+  verify_ssl: false 
+
+interval:
+# 1. Оновлюємо зовнішню IP
+  - interval: 20min
+    then:
+      - script.execute: update_ip_logic
+
+# 2. Відправляємо дані на сервер
+  - interval: 60s
+    then:
+      - http_request.post:
+          url: ${webhook_target}
+          request_headers:
+            Content-Type: application/x-www-form-urlencoded
+          body: !lambda |-
+            // Функція безпечного перетворення (nan -> "0")
+            auto safe_str = [](float val) -> std::string {
+              return isnan(val) ? "0" : to_string(val);
+            };
+
+            std::string v = safe_str(id(bms_volt).state);
+            std::string c = safe_str(id(bms_curr).state);
+            std::string soc = safe_str(id(bms_soc).state);
+            
+            std::string pchg = safe_str(id(p_chg).state);
+            std::string pdsg = safe_str(id(p_dsg).state);
+
+            std::string cell1 = safe_str(id(c1).state);
+            std::string cell2 = safe_str(id(c2).state);
+            std::string cell3 = safe_str(id(c3).state);
+            std::string cell4 = safe_str(id(c4).state);
+            
+            std::string tp1 = safe_str(id(t1).state);
+            std::string tpm = safe_str(id(tmos).state);
+            
+            // Статуси
+            std::string s_chg = id(mos_chg).state ? "ON" : "OFF";
+            std::string s_dsg = id(mos_dsg).state ? "ON" : "OFF";
+            std::string s_bal = id(is_balancing).state ? "ON" : "OFF";
+            
+            // === ОСЬ ЦЬОГО РЯДКА НЕ ВИСТАЧАЛО ===
+            std::string s_online = id(bms_online).state ? "ON" : "OFF";
+            
+            // IP
+            std::string local = id(ip_local).state;
+            std::string pub = id(ip_public).state;
+            if (pub.empty()) pub = "unknown";
+
+            std::string payload = "sensor=combined";
+            payload += "&source=hub";
+            payload += "&v=" + v;
+            payload += "&c=" + c;
+            payload += "&soc=" + soc;
+            payload += "&pchg=" + pchg; 
+            payload += "&pdsg=" + pdsg;
+            payload += "&c1=" + cell1;
+            payload += "&c2=" + cell2;
+            payload += "&c3=" + cell3;
+            payload += "&c4=" + cell4;
+            payload += "&t1=" + tp1;
+            payload += "&tm=" + tpm;
+            payload += "&chg=" + s_chg;
+            payload += "&dsg=" + s_dsg;
+            payload += "&bal=" + s_bal;
+            payload += "&online=" + s_online; 
+            payload += "&ip_local=" + local;
+            payload += "&ip_public=" + pub;
+            payload += "&key=${webhook_key}";
+
+            return payload;
