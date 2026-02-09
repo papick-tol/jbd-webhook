@@ -1,4 +1,4 @@
-#  ------------------------  для харківське шосе ЕСП8266 МОНІТОРІНГ   -------------------------------------
+#  ------------------------  ЕСП32 МОНІТОРІНГ   -------------------------------------
 - trigger:
     - platform: webhook
       webhook_id: "YOUR_WEBHOOK_ID"
@@ -171,6 +171,7 @@
       state: >
         {% set d = trigger.data %}
         {% if d.key == 'YOR_SECRET_KEY' and d.ip_local is defined %} {{ d.ip_local }} {% else %} {{ this.state }} {% endif %}
+
 
 
 
