@@ -229,8 +229,6 @@ interval:
             std::string s_chg = id(mos_chg).state ? "ON" : "OFF";
             std::string s_dsg = id(mos_dsg).state ? "ON" : "OFF";
             std::string s_bal = id(is_balancing).state ? "ON" : "OFF";
-            
-            // === ОСЬ ЦЬОГО РЯДКА НЕ ВИСТАЧАЛО ===
             std::string s_online = id(bms_online).state ? "ON" : "OFF";
             
             // IP
